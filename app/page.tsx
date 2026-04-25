@@ -2,11 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 
-// Tipagem central para coordenadas e direções
-type Point = {
-  x: number;
-  y: number;
-};
+type Point = { x: number; y: number };
 
 const GRID = 20;
 const CELL = 20;
@@ -14,7 +10,6 @@ const INITIAL_SNAKE: Point[] = [{ x: 10, y: 10 }];
 const INITIAL_DIR: Point = { x: 1, y: 0 };
 const SPEED = 120;
 
-// Tipagem explícita para o parâmetro e o retorno
 function randomFood(snake: Point[]): Point {
   let pos: Point;
   do {
@@ -26,7 +21,7 @@ function randomFood(snake: Point[]): Point {
   return pos;
 }
 
-export default function Home() {
+export default function SnakeGame() {
   const [snake, setSnake] = useState<Point[]>(INITIAL_SNAKE);
   const [dir, setDir] = useState<Point>(INITIAL_DIR);
   const [food, setFood] = useState<Point>({ x: 5, y: 5 });
@@ -35,11 +30,28 @@ export default function Home() {
   const [dead, setDead] = useState<boolean>(false);
   const [started, setStarted] = useState<boolean>(false);
 
-  // Refs tipadas
   const dirRef = useRef<Point>(INITIAL_DIR);
   const snakeRef = useRef<Point[]>(INITIAL_SNAKE);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const swipe = useRef<Point | null>(null);
+
+  useEffect(() => {
+    const storage = (globalThis as any).localStorage;
+    if (storage) {
+      const stored = storage.getItem("snake-best");
+      if (stored) setBest(Number(stored));
+    }
+  }, []);
+
+  const updateBestScore = useCallback((newScore: number) => {
+    if (newScore > best) {
+      setBest(newScore);
+      const storage = (globalThis as any).localStorage;
+      if (storage) {
+        storage.setItem("snake-best", newScore.toString());
+      }
+    }
+  }, [best]);
 
   const reset = useCallback(() => {
     const s: Point[] = [{ x: 10, y: 10 }];
@@ -55,12 +67,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const stored = localStorage.getItem("snake-best");
-    if (stored) setBest(Number(stored));
-  }, []);
-
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
+    const handleKey = (e: any) => {
       const map: Record<string, Point> = {
         ArrowUp: { x: 0, y: -1 },
         ArrowDown: { x: 0, y: 1 },
@@ -76,7 +83,6 @@ export default function Home() {
       if (!next) return;
 
       const cur = dirRef.current;
-      // Impede que a cobra ande na direção oposta (volte por dentro de si mesma)
       if (next.x === -cur.x && next.y === -cur.y) return;
 
       dirRef.current = next;
@@ -85,8 +91,11 @@ export default function Home() {
       if (!started && !dead) reset();
     };
 
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
+    const globalWindow = globalThis as any;
+    if (globalWindow.addEventListener) {
+      globalWindow.addEventListener("keydown", handleKey);
+      return () => globalWindow.removeEventListener("keydown", handleKey);
+    }
   }, [started, dead, reset]);
 
   useEffect(() => {
@@ -97,7 +106,6 @@ export default function Home() {
       const s = snakeRef.current;
       const head: Point = { x: s[0].x + d.x, y: s[0].y + d.y };
 
-      // Colisão com parede ou próprio corpo
       if (
         head.x < 0 || head.x >= GRID ||
         head.y < 0 || head.y >= GRID ||
@@ -117,11 +125,7 @@ export default function Home() {
           newSnake = [head, ...s];
           setScore((sc) => {
             const ns = sc + 10;
-            setBest((b) => {
-              const nb = Math.max(b, ns);
-              localStorage.setItem("snake-best", String(nb));
-              return nb;
-            });
+            updateBestScore(ns);
             return ns;
           });
           snakeRef.current = newSnake;
@@ -139,14 +143,13 @@ export default function Home() {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [started, dead]);
+  }, [started, dead, updateBestScore]);
 
-  // Handlers para Touch Events
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+  const handleTouchStart = (e: React.TouchEvent<any>) => {
     swipe.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   };
 
-  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+  const handleTouchEnd = (e: React.TouchEvent<any>) => {
     if (!swipe.current) return;
     
     const dx = e.changedTouches[0].clientX - swipe.current.x;
@@ -184,20 +187,17 @@ export default function Home() {
         overflow: "hidden",
       }}
     >
-      {/* Scanline overlay */}
       <div style={{
         position: "fixed", inset: 0, pointerEvents: "none", zIndex: 10,
         backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px)",
       }} />
 
-      {/* Glow bg */}
       <div style={{
         position: "fixed", top: "30%", left: "50%", transform: "translate(-50%,-50%)",
         width: 600, height: 600, borderRadius: "50%", pointerEvents: "none",
         background: "radial-gradient(circle, rgba(0,255,128,0.04) 0%, transparent 70%)",
       }} />
 
-      {/* Header */}
       <div style={{ textAlign: "center", marginBottom: 32 }}>
         <div style={{
           fontSize: 11, letterSpacing: 6, color: "#00ff80", marginBottom: 8,
@@ -214,7 +214,6 @@ export default function Home() {
         </h1>
       </div>
 
-      {/* Score */}
       <div style={{
         display: "flex", gap: 32, marginBottom: 20,
         fontSize: 12, letterSpacing: 3, textTransform: "uppercase",
@@ -230,7 +229,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Game board */}
       <div
         style={{
           position: "relative",
@@ -245,7 +243,6 @@ export default function Home() {
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Grid lines */}
         {Array.from({ length: GRID }).map((_, i) => (
           <div key={`h${i}`} style={{
             position: "absolute", left: 0, right: 0, top: i * CELL, height: 1,
@@ -259,7 +256,6 @@ export default function Home() {
           }} />
         ))}
 
-        {/* Snake */}
         {snake.map((seg, i) => (
           <div key={i} style={{
             position: "absolute",
@@ -276,7 +272,6 @@ export default function Home() {
           }} />
         ))}
 
-        {/* Food */}
         <div style={{
           position: "absolute",
           left: food.x * CELL + 2,
@@ -289,7 +284,6 @@ export default function Home() {
           animation: "pulse 1s ease-in-out infinite",
         }} />
 
-        {/* Overlay messages */}
         {!started && (
           <div style={{
             position: "absolute", inset: 0, display: "flex", flexDirection: "column",
@@ -325,7 +319,6 @@ export default function Home() {
         )}
       </div>
 
-      {/* Controls hint */}
       <div style={{
         marginTop: 20, color: "#222", fontSize: 10, letterSpacing: 3,
         textTransform: "uppercase",
@@ -346,14 +339,3 @@ export default function Home() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
