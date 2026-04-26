@@ -3,8 +3,12 @@
 /// <reference lib="webworker" />
 import { defaultCache } from "@serwist/turbopack/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
-import { NetworkFirst, Serwist } from "serwist";
+import { Serwist } from "serwist";
 
+// This declares the value of `injectionPoint` to TypeScript.
+// `injectionPoint` is the string that will be replaced by the
+// actual precache manifest. By default, this string is set to
+// `"self.__SW_MANIFEST"`.
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
     __SW_MANIFEST: (PrecacheEntry | string)[] | undefined;
@@ -18,19 +22,7 @@ const serwist = new Serwist({
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: [
-    ...defaultCache, // cache padrão do serwist (páginas, assets, fontes, etc)
-    {
-      // cacheia qualquer requisição feita pra /api/* (axios, fetch, qualquer lib)
-      // online → busca da api e salva no cache
-      // offline → serve o último dado cacheado
-      matcher: ({ url }) => url.pathname.startsWith("/api/"),
-      handler: new NetworkFirst({
-        cacheName: "api-cache",       // nome do cache no devtools
-        networkTimeoutSeconds: 5,     // se demorar +5s na rede, usa cache
-      }),
-    },
-  ],
+  runtimeCaching: defaultCache,
   fallbacks: {
     entries: [
       {
