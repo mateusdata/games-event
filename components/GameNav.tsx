@@ -1,14 +1,39 @@
-// components/GameNav.tsx
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 
 const games = [
   { url: "/", label: "🏠 Home" },
   { url: "/genius", label: "🧠 Genius" },
   { url: "/mines", label: "💣 Mines" },
 ];
+
+function GameLink({ url, label }: { url: string; label: string }) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <Link
+      href={url}
+      style={{
+        backgroundColor: hovered ? "#2a2a2a" : "#1a1a1a",
+        color: "#fff",
+        padding: "8px 16px",
+        borderRadius: "8px",
+        border: "1px solid #333",
+        fontSize: "14px",
+        fontFamily: "monospace",
+        textDecoration: "none",
+        transition: "background 0.2s",
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {label}
+    </Link>
+  );
+}
 
 export default function GameNav() {
   const pathname = usePathname();
@@ -30,29 +55,7 @@ export default function GameNav() {
       {games
         .filter((game) => game.url !== pathname)
         .map((game) => (
-          <Link
-            key={game.url}
-            href={game.url}
-            style={{
-              backgroundColor: "#1a1a1a",
-              color: "#fff",
-              padding: "8px 16px",
-              borderRadius: "8px",
-              border: "1px solid #333",
-              fontSize: "14px",
-              fontFamily: "monospace",
-              textDecoration: "none",
-              transition: "background 0.2s",
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.backgroundColor = "#2a2a2a")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.backgroundColor = "#1a1a1a")
-            }
-          >
-            {game.label}
-          </Link>
+          <GameLink key={game.url} url={game.url} label={game.label} />
         ))}
     </header>
   );
