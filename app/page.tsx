@@ -1,261 +1,225 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 
-type Point = { x: number; y: number };
+type PadColor = {
+  id: number;
+  baseColor: string;
+  glowColor: string;
+  freq: number;
+};
 
-const GRID = 20;
-const CELL = 20;
-const INITIAL_SNAKE: Point[] = [{ x: 10, y: 10 }];
-const INITIAL_DIR: Point = { x: 1, y: 0 };
-const SPEED = 120;
+const PADS: PadColor[] = [
+  { id: 0, baseColor: "rgba(0, 255, 128, 0.3)", glowColor: "#00ff80", freq: 329.63 },
+  { id: 1, baseColor: "rgba(255, 51, 102, 0.3)", glowColor: "#ff3366", freq: 261.63 },
+  { id: 2, baseColor: "rgba(255, 204, 0, 0.3)", glowColor: "#ffcc00", freq: 220.00 },
+  { id: 3, baseColor: "rgba(0, 204, 255, 0.3)", glowColor: "#00ccff", freq: 164.81 },
+];
 
-function randomFood(snake: Point[]): Point {
-  let pos: Point;
-  do {
-    pos = {
-      x: Math.floor(Math.random() * GRID),
-      y: Math.floor(Math.random() * GRID),
-    };
-  } while (snake.some((s) => s.x === pos.x && s.y === pos.y));
-  return pos;
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function playTone(freq: number, type: "sine" | "square" | "sawtooth" | "triangle" = "square", durationMs = 400) {
+  const g = globalThis as any;
+  const AudioContext = g.AudioContext || g.webkitAudioContext;
+  if (!AudioContext) return;
+  
+  const ctx = new AudioContext();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, ctx.currentTime);
+  
+  gain.gain.setValueAtTime(0.1, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + durationMs / 1000);
+  
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  
+  osc.start();
+  osc.stop(ctx.currentTime + durationMs / 1000);
 }
 
-export default function SnakeGame() {
-  const [snake, setSnake] = useState<Point[]>(INITIAL_SNAKE);
-  const [dir, setDir] = useState<Point>(INITIAL_DIR);
-  const [food, setFood] = useState<Point>({ x: 5, y: 5 });
+export default function GeniusGame() {
+  const [sequence, setSequence] = useState<number[]>([]);
+  const [playerStep, setPlayerStep] = useState<number>(0);
+  const [activePad, setActivePad] = useState<number | null>(null);
+  const [isPlayingSeq, setIsPlayingSeq] = useState<boolean>(false);
+  
   const [score, setScore] = useState<number>(0);
   const [best, setBest] = useState<number>(0);
   const [dead, setDead] = useState<boolean>(false);
   const [started, setStarted] = useState<boolean>(false);
 
-  const dirRef = useRef<Point>(INITIAL_DIR);
-  const snakeRef = useRef<Point[]>(INITIAL_SNAKE);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const swipe = useRef<Point | null>(null);
-
   useEffect(() => {
-    const stored = (globalThis as any).localStorage?.getItem("snake-best");
+    const stored = (globalThis as any).localStorage?.getItem("genius-best");
     if (stored) setBest(Number(stored));
   }, []);
 
   const updateBestScore = useCallback((newScore: number) => {
     if (newScore > best) {
       setBest(newScore);
-      (globalThis as any).localStorage?.setItem("snake-best", newScore.toString());
+      (globalThis as any).localStorage?.setItem("genius-best", newScore.toString());
     }
   }, [best]);
 
+  const playSequence = async (seq: number[]) => {
+    setIsPlayingSeq(true);
+    await sleep(600);
+    
+    for (let i = 0; i < seq.length; i++) {
+      const padId = seq[i];
+      const pad = PADS.find(p => p.id === padId);
+      
+      setActivePad(padId);
+      if (pad) playTone(pad.freq, "square", 400);
+      
+      await sleep(400);
+      setActivePad(null);
+      await sleep(200);
+    }
+    
+    setIsPlayingSeq(false);
+  };
+
+  const startNextLevel = useCallback((currentSeq: number[]) => {
+    const nextPad = Math.floor(Math.random() * 4);
+    const newSeq = [...currentSeq, nextPad];
+    setSequence(newSeq);
+    setPlayerStep(0);
+    playSequence(newSeq);
+  }, []);
+
   const reset = useCallback(() => {
-    const s: Point[] = [{ x: 10, y: 10 }];
-    const d: Point = { x: 1, y: 0 };
-    snakeRef.current = s;
-    dirRef.current = d;
-    setSnake(s);
-    setDir(d);
-    setFood(randomFood(s));
     setScore(0);
     setDead(false);
     setStarted(true);
-  }, []);
+    startNextLevel([]);
+  }, [startNextLevel]);
 
-  useEffect(() => {
-    const handleKey = (e: any) => {
-      const map: Record<string, Point> = {
-        ArrowUp: { x: 0, y: -1 },
-        ArrowDown: { x: 0, y: 1 },
-        ArrowLeft: { x: -1, y: 0 },
-        ArrowRight: { x: 1, y: 0 },
-        w: { x: 0, y: -1 },
-        s: { x: 0, y: 1 },
-        a: { x: -1, y: 0 },
-        d: { x: 1, y: 0 },
-      };
-      const next = map[e.key];
-      if (!next) return;
-      const cur = dirRef.current;
-      if (next.x === -cur.x && next.y === -cur.y) return;
-      dirRef.current = next;
-      setDir(next);
-      if (!started && !dead) reset();
-    };
+  const handlePadClick = async (id: number) => {
+    if (!started || dead || isPlayingSeq) return;
 
-    (globalThis as any).addEventListener("keydown", handleKey);
-    return () => (globalThis as any).removeEventListener("keydown", handleKey);
-  }, [started, dead, reset]);
+    setActivePad(id);
+    const pad = PADS.find(p => p.id === id);
+    if (pad) playTone(pad.freq, "square", 200);
+    
+    setTimeout(() => {
+      if (!isPlayingSeq) setActivePad(null);
+    }, 200);
 
-  useEffect(() => {
-    if (!started || dead) return;
-    intervalRef.current = setInterval(() => {
-      const d = dirRef.current;
-      const s = snakeRef.current;
-      const head: Point = { x: s[0].x + d.x, y: s[0].y + d.y };
-      if (
-        head.x < 0 || head.x >= GRID ||
-        head.y < 0 || head.y >= GRID ||
-        s.some((seg) => seg.x === head.x && seg.y === head.y)
-      ) {
-        setDead(true);
-        setStarted(false);
-        if (intervalRef.current) clearInterval(intervalRef.current);
-        return;
+    if (id === sequence[playerStep]) {
+      const nextStep = playerStep + 1;
+      setPlayerStep(nextStep);
+
+      if (nextStep === sequence.length) {
+        const newScore = score + 1;
+        setScore(newScore);
+        updateBestScore(newScore);
+        setIsPlayingSeq(true);
+        
+        setTimeout(() => {
+          startNextLevel(sequence);
+        }, 1000);
       }
-      setFood((f) => {
-        const ate = head.x === f.x && head.y === f.y;
-        let newSnake: Point[];
-        if (ate) {
-          newSnake = [head, ...s];
-          setScore((sc) => {
-            const ns = sc + 10;
-            updateBestScore(ns);
-            return ns;
-          });
-          snakeRef.current = newSnake;
-          setSnake(newSnake);
-          return randomFood(newSnake);
-        } else {
-          newSnake = [head, ...s.slice(0, -1)];
-          snakeRef.current = newSnake;
-          setSnake(newSnake);
-          return f;
-        }
-      });
-    }, SPEED);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [started, dead, updateBestScore]);
-
-  const handleTouchStart = (e: React.TouchEvent<any>) => {
-    swipe.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent<any>) => {
-    if (!swipe.current) return;
-    const dx = e.changedTouches[0].clientX - swipe.current.x;
-    const dy = e.changedTouches[0].clientY - swipe.current.y;
-    const cur = dirRef.current;
-    let next = cur;
-    if (Math.abs(dx) > Math.abs(dy)) {
-      next = dx > 0 ? { x: 1, y: 0 } : { x: -1, y: 0 };
     } else {
-      next = dy > 0 ? { x: 0, y: 1 } : { x: 0, y: -1 };
+      playTone(100, "sawtooth", 800);
+      setDead(true);
+      setStarted(false);
+      setSequence([]);
     }
-    if (next.x !== -cur.x || next.y !== -cur.y) {
-      dirRef.current = next;
-      setDir(next);
-    }
-    if (!started) reset();
-    swipe.current = null;
   };
-
-  const boardSize = GRID * CELL;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] flex flex-col items-center justify-center font-mono px-5 relative overflow-hidden">
+    <div className="min-h-screen bg-[#0a0a0f] flex flex-col items-center justify-center font-mono p-5 relative overflow-hidden">
+      
+      <div className="fixed inset-0 pointer-events-none z-10 bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(0,0,0,0.08)_2px,rgba(0,0,0,0.08)_4px)]" />
 
-      {/* scanline */}
-      <div className="fixed inset-0 pointer-events-none z-10 [background-image:repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(0,0,0,0.08)_2px,rgba(0,0,0,0.08)_4px)]" />
+      <div className="fixed top-[30%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full pointer-events-none bg-[radial-gradient(circle,rgba(0,255,128,0.04)_0%,transparent_70%)]" />
 
-      {/* glow */}
-      <div className="fixed top-[30%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full pointer-events-none [background:radial-gradient(circle,rgba(0,255,128,0.04)_0%,transparent_70%)]" />
-
-      {/* header */}
-      <div className="text-center mb-8">
-        <p className="text-[11px] tracking-[6px] text-[#00ff80] mb-2 uppercase opacity-70">
+      <div className="text-center mb-8 z-10">
+        <div className="text-[11px] tracking-[6px] text-[#00ff80] mb-2 uppercase opacity-70">
           Games Eventos
-        </p>
-        <h1 className="text-[clamp(28px,6vw,48px)] font-black text-white tracking-tight leading-none [text-shadow:0_0_40px_rgba(0,255,128,0.3)]">
-          SNAKE
+        </div>
+        <h1 className="text-[clamp(28px,6vw,48px)] font-black m-0 text-white tracking-tighter leading-none drop-shadow-[0_0_40px_rgba(0,255,128,0.3)]">
+          GENIUS
         </h1>
       </div>
 
-      {/* score */}
-      <div className="flex gap-8 mb-5 text-xs tracking-[3px] uppercase">
+      <div className="flex gap-8 mb-5 z-10 text-xs tracking-[3px] uppercase">
         <div className="text-center">
-          <p className="text-[#444] mb-0.5">Score</p>
-          <p className="text-[#00ff80] text-xl font-bold">{score}</p>
+          <div className="text-[#444] mb-0.5">Level</div>
+          <div className="text-[#00ff80] text-xl font-bold">{score}</div>
         </div>
         <div className="w-px bg-[#1a1a2e]" />
         <div className="text-center">
-          <p className="text-[#444] mb-0.5">Best</p>
-          <p className="text-white text-xl font-bold">{best}</p>
+          <div className="text-[#444] mb-0.5">Best</div>
+          <div className="text-white text-xl font-bold">{best}</div>
         </div>
       </div>
 
-      {/* board */}
-      <div
-        className="relative cursor-pointer bg-[#0d0d16] border border-[#1a1a2e] [box-shadow:0_0_60px_rgba(0,255,128,0.08),inset_0_0_40px_rgba(0,0,0,0.5)]"
-        style={{ width: boardSize, height: boardSize }}
-        onClick={() => { if (!started && !dead) reset(); if (dead) reset(); }}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
-        {Array.from({ length: GRID }).map((_, i) => (
-          <div key={`h${i}`} className="absolute left-0 right-0 h-px bg-white/[0.02]" style={{ top: i * CELL }} />
-        ))}
-        {Array.from({ length: GRID }).map((_, i) => (
-          <div key={`v${i}`} className="absolute top-0 bottom-0 w-px bg-white/[0.02]" style={{ left: i * CELL }} />
-        ))}
-
-        {snake.map((seg, i) => (
-          <div
-            key={i}
-            className="absolute"
-            style={{
-              left: seg.x * CELL + 1,
-              top: seg.y * CELL + 1,
-              width: CELL - 2,
-              height: CELL - 2,
-              background: i === 0 ? "#00ff80" : `rgba(0,255,128,${Math.max(0.15, 1 - i * 0.04)})`,
-              borderRadius: i === 0 ? 4 : 2,
-              boxShadow: i === 0 ? "0 0 12px rgba(0,255,128,0.8)" : "none",
-              transition: "none",
-            }}
-          />
-        ))}
-
-        <div
-          className="absolute rounded-full animate-pulse"
-          style={{
-            left: food.x * CELL + 2,
-            top: food.y * CELL + 2,
-            width: CELL - 4,
-            height: CELL - 4,
-            background: "#ff3366",
-            boxShadow: "0 0 10px rgba(255,51,102,0.8)",
-          }}
-        />
+      <div className="relative w-full max-w-[400px] aspect-square bg-[#0d0d16] border border-[#1a1a2e] shadow-[0_0_60px_rgba(0,255,128,0.08),inset_0_0_40px_rgba(0,0,0,0.5)] grid grid-cols-2 grid-rows-2 gap-3 p-3 rounded-[24px] z-10">
+        {PADS.map((pad) => {
+          const isActive = activePad === pad.id;
+          return (
+            <button
+              key={pad.id}
+              onClick={() => handlePadClick(pad.id)}
+              disabled={isPlayingSeq || (!started && !dead)}
+              className={`rounded-xl transition-all duration-100 outline-none border ${
+                isPlayingSeq || !started ? "cursor-default" : "cursor-pointer"
+              }`}
+              style={{
+                background: isActive ? pad.glowColor : pad.baseColor,
+                borderColor: isActive ? "#fff" : "rgba(255,255,255,0.05)",
+                boxShadow: isActive ? `0 0 40px ${pad.glowColor}` : "none",
+              }}
+            />
+          );
+        })}
 
         {!started && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[rgba(10,10,15,0.85)] backdrop-blur-sm">
+          <div 
+            onClick={() => { if (!started) reset(); }}
+            className="absolute inset-0 flex flex-col items-center justify-center bg-[#0a0a0f]/85 backdrop-blur-[4px] rounded-[24px] cursor-pointer"
+          >
             {dead ? (
               <>
-                <p className="text-[#ff3366] text-[22px] font-black tracking-[4px] mb-2">GAME OVER</p>
-                <p className="text-[#444] text-[11px] tracking-[3px]">
-                  SCORE: <span className="text-white">{score}</span>
-                </p>
-                <p className="mt-5 text-[#00ff80] text-[11px] tracking-[3px] animate-[blink_1s_step-end_infinite]">
-                  CLIQUE PARA JOGAR
-                </p>
+                <div className="text-[#ff3366] text-[22px] font-black tracking-[4px] mb-2">
+                  GAME OVER
+                </div>
+                <div className="text-[#444] text-[11px] tracking-[3px]">
+                  LEVEL ALCANÇADO: <span className="text-white">{score}</span>
+                </div>
+                <div className="mt-5 text-[#00ff80] text-[11px] tracking-[3px] retro-blink">
+                  CLIQUE PARA TENTAR DE NOVO
+                </div>
               </>
             ) : (
               <>
-                <p className="text-[#00ff80] text-[13px] tracking-[4px] mb-1.5">PRONTO?</p>
-                <p className="text-[#333] text-[11px] tracking-[2px] mb-5">WASD / SETAS / SWIPE</p>
-                <p className="text-[#00ff80] text-[11px] tracking-[3px] animate-[blink_1s_step-end_infinite]">
+                <div className="text-[#00ff80] text-[13px] tracking-[4px] mb-1.5">
+                  ATENÇÃO
+                </div>
+                <div className="text-[#333] text-[11px] tracking-[2px] mb-5">
+                  REPITA A SEQUÊNCIA DE CORES
+                </div>
+                <div className="text-[#00ff80] text-[11px] tracking-[3px] retro-blink">
                   CLIQUE PARA INICIAR
-                </p>
+                </div>
               </>
             )}
           </div>
         )}
       </div>
 
-      <p className="mt-5 text-[#222] text-[10px] tracking-[3px] uppercase">← WASD ou SETAS →</p>
+      <div className="mt-5 text-[#222] text-[10px] tracking-[3px] uppercase z-10">
+        {isPlayingSeq ? "MEMORIZE A SEQUÊNCIA..." : started ? "SUA VEZ!" : "LIGUE O SOM"}
+      </div>
 
       <style>{`
+        .retro-blink {
+          animation: blink 1s step-end infinite;
+        }
         @keyframes blink {
           0%, 100% { opacity: 1; }
           50% { opacity: 0; }
