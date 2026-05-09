@@ -9,6 +9,8 @@ const GAMES = [
   { id: "snake", name: "SNAKE", path: "/snac", color: "#ffcc00", letter: "S" },
   { id: "drop", name: "DROP COIN", path: "/drop", color: "#00ccff", letter: "D" },
   { id: "puzzle", name: "PUZZLE", path: "/puzzle", color: "#b300ff", letter: "P" },
+  { id: "flappy", name: "FLAPPY NEON", path: "/flappy", color: "#00ffff", letter: "F" },
+  { id: "whack", name: "WHACK-A-BUG", path: "/whack", color: "#ff00ff", letter: "W" },
 ];
 
 export default function Home() {

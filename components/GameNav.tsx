@@ -11,6 +11,8 @@ const GAMES = [
   { url: "/snac", label: "SNAKE", letter: "S", color: "#ffcc00" },
   { url: "/drop", label: "DROP", letter: "D", color: "#00ccff" },
   { url: "/puzzle", label: "PUZZLE", letter: "P", color: "#b300ff" },
+  { url: "/flappy", label: "FLAPPY", letter: "F", color: "#00ffff" },
+  { url: "/whack", label: "WHACK", letter: "W", color: "#ff00ff" },
 ];
 
 function GameLink({ url, label, letter, color, active }: { url: string; label: string; letter: string; color: string; active: boolean }) {
