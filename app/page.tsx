@@ -62,12 +62,7 @@ export default function Home() {
                   boxShadow: isHovered ? `0 10px 40px ${game.color}20, inset 0 0 20px ${game.color}10` : 'inset 0 0 40px rgba(0,0,0,0.5)'
                 }}
               >
-                <div 
-                  className="text-5xl mb-4 font-black transform transition-all duration-300 group-hover:scale-110 opacity-80"
-                  style={{ color: game.color, textShadow: `0 0 20px ${game.color}80` }}
-                >
-                  [{game.letter}]
-                </div>
+
                 <h2 
                   className="text-2xl font-black tracking-[4px] transition-colors duration-300"
                   style={{ color: isHovered ? game.color : '#fff' }}

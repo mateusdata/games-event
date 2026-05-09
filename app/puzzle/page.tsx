@@ -20,11 +20,11 @@ function playTone(freq: number, type: "sine" | "square" | "sawtooth" | "triangle
   osc.stop(ctx.currentTime + durationMs / 1000);
 }
 
-type Level = { name: string; size: number; time: number };
+type Level = { name: string; size: number; time: number; color: string };
 const LEVELS: Level[] = [
-  { name: "INICIANTE", size: 2, time: 30 },
-  { name: "INTERMEDIÁRIO", size: 3, time: 60 },
-  { name: "AVANÇADO", size: 4, time: 120 }
+  { name: "INICIANTE", size: 2, time: 30, color: "#00ff80" },
+  { name: "INTERMEDIÁRIO", size: 3, time: 60, color: "#ffcc00" },
+  { name: "AVANÇADO", size: 4, time: 120, color: "#ff3366" }
 ];
 
 export default function PuzzleGame() {
@@ -125,7 +125,14 @@ export default function PuzzleGame() {
             <button
               key={level.name}
               onClick={() => startGame(level)}
-              className="bg-[#1a0033] border border-[#b300ff] p-4 text-[#b300ff] font-bold hover:bg-[#b300ff] hover:text-white transition-all shadow-[0_0_15px_rgba(179,0,255,0.2)]"
+              className="bg-transparent border p-4 font-bold transition-all"
+              style={{ 
+                borderColor: level.color, 
+                color: level.color, 
+                boxShadow: `0 0 15px ${level.color}30` 
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as any).style.backgroundColor = level.color; (e.currentTarget as any).style.color = '#0a0a0f'; }}
+              onMouseLeave={(e) => { (e.currentTarget as any).style.backgroundColor = 'transparent'; (e.currentTarget as any).style.color = level.color; }}
             >
               {level.name} ({level.size}x{level.size})
             </button>

@@ -31,8 +31,7 @@ function GameLink({ url, label, letter, color, active }: { url: string; label: s
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <span className="font-black opacity-80">[{letter}]</span>
-      <span className="hidden md:inline">{label}</span>
+      <span className="font-bold">{label}</span>
       {(active || hovered) && (
         <div 
           className="absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 rounded-t-full transition-all duration-300"
