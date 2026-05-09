@@ -7,20 +7,20 @@ function playTone(freq: number, type: "sine" | "square" | "sawtooth" | "triangle
   const g = globalThis as any;
   const AudioContext = g.AudioContext || g.webkitAudioContext;
   if (!AudioContext) return;
-  
+
   const ctx = new AudioContext();
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
-  
+
   osc.type = type;
   osc.frequency.setValueAtTime(freq, ctx.currentTime);
-  
+
   gain.gain.setValueAtTime(0.1, ctx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + durationMs / 1000);
-  
+
   osc.connect(gain);
   gain.connect(ctx.destination);
-  
+
   osc.start();
   osc.stop(ctx.currentTime + durationMs / 1000);
 }
@@ -43,7 +43,7 @@ export default function DropGame() {
 
   const initGame = useCallback(() => {
     if (!sceneRef.current) return;
-    
+
     if (renderRef.current) {
       Matter.Render.stop(renderRef.current);
       if (engineRef.current) Matter.Engine.clear(engineRef.current);
@@ -76,7 +76,7 @@ export default function DropGame() {
 
     const runner = Matter.Runner.create();
     runnerRef.current = runner;
-    
+
     Matter.Render.run(render);
     Matter.Runner.run(runner, engine);
 
@@ -92,7 +92,7 @@ export default function DropGame() {
     const cols = 9;
     const spacingX = WIDTH / cols;
     const spacingY = (HEIGHT - 200) / rows;
-    
+
     for (let r = 0; r < rows; r++) {
       const numCols = r % 2 === 0 ? cols : cols - 1;
       const offsetX = r % 2 === 0 ? spacingX / 2 : spacingX;
@@ -144,7 +144,7 @@ export default function DropGame() {
     Matter.Events.on(engine, "collisionStart", (event) => {
       event.pairs.forEach((pair) => {
         const { bodyA, bodyB } = pair;
-        
+
         if ((bodyA.label === "coin" && !bodyB.isSensor) || (bodyB.label === "coin" && !bodyA.isSensor)) {
           playTone(400 + Math.random() * 200, "triangle", 20);
         }
@@ -154,7 +154,7 @@ export default function DropGame() {
 
         if (coin && sensor && sensor.label.startsWith("bucket-")) {
           const mult = parseInt(sensor.label.split("-")[1], 10);
-          
+
           if (mult > 2) playTone(800, "square", 300);
           else if (mult > 0) playTone(500, "square", 200);
           else playTone(200, "sawtooth", 300);
@@ -200,12 +200,12 @@ export default function DropGame() {
 
   const dropCoin = (x: number) => {
     if (coinsLeft <= 0 || !engineRef.current || gameOver) return;
-    
+
     playTone(600, "sine", 100);
     setCoinsLeft(prev => prev - 1);
-    
+
     const dropX = x + (Math.random() * 4 - 2);
-    
+
     const coin = Matter.Bodies.circle(dropX, 10, 8, {
       label: "coin",
       restitution: 0.6,
@@ -217,7 +217,7 @@ export default function DropGame() {
         lineWidth: 1
       }
     });
-    
+
     Matter.Composite.add(engineRef.current.world, coin);
   };
 
@@ -238,7 +238,7 @@ export default function DropGame() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] flex flex-col items-center justify-center font-mono p-5 relative overflow-hidden select-none">
-      
+
       <div className="fixed inset-0 pointer-events-none z-10 bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(0,0,0,0.08)_2px,rgba(0,0,0,0.08)_4px)]" />
 
       <div className="fixed top-[30%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full pointer-events-none bg-[radial-gradient(circle,rgba(0,204,255,0.04)_0%,transparent_70%)]" />
@@ -264,32 +264,32 @@ export default function DropGame() {
         </div>
       </div>
 
-      <div 
+      <div
         className="relative bg-[#0d0d16] border border-[#1a1a2e] shadow-[0_0_60px_rgba(0,204,255,0.08),inset_0_0_40px_rgba(0,0,0,0.5)] rounded-2xl z-10 overflow-hidden cursor-crosshair mx-auto"
         style={{ width: "100%", maxWidth: "min(600px, calc(65vh * 6 / 7))" }}
       >
-        
-        <div 
-          ref={sceneRef} 
+
+        <div
+          ref={sceneRef}
           onClick={handleSceneClick}
           style={{ width: "100%", aspectRatio: '6/7' }}
           className="[&>canvas]:!w-full [&>canvas]:!h-full [&>canvas]:block"
         />
-        
+
         <div className="absolute bottom-0 left-0 w-full flex text-white pointer-events-none text-center h-[40px] items-center justify-between">
           {MULTIPLIERS.map((m, i) => (
-             <div 
-               key={i} 
-               style={{ width: `${100 / MULTIPLIERS.length}%` }} 
-               className={`text-[10px] sm:text-xs font-bold ${m > 2 ? 'text-[#ff3366]' : m > 0 ? 'text-[#00ff80]' : 'text-[#555]'}`}
-             >
-               {m}x
-             </div>
+            <div
+              key={i}
+              style={{ width: `${100 / MULTIPLIERS.length}%` }}
+              className={`text-[10px] sm:text-xs font-bold ${m > 2 ? 'text-[#ff3366]' : m > 0 ? 'text-[#00ff80]' : 'text-[#555]'}`}
+            >
+              {m}x
+            </div>
           ))}
         </div>
 
         {!gameStarted && (
-          <div 
+          <div
             onClick={startGame}
             className="absolute inset-0 flex flex-col items-center justify-center bg-[#0a0a0f]/85 backdrop-blur-[4px] cursor-pointer"
           >
@@ -306,7 +306,7 @@ export default function DropGame() {
         )}
 
         {gameOver && gameStarted && (
-          <div 
+          <div
             onClick={() => { initGame(); startGame(); }}
             className="absolute inset-0 flex flex-col items-center justify-center bg-[#0a0a0f]/85 backdrop-blur-[4px] cursor-pointer"
           >
