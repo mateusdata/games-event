@@ -9,6 +9,7 @@ const GAMES = [
   { url: "/genius", label: "GENIUS", letter: "G", color: "#00ff80" },
   { url: "/mines", label: "MINES", letter: "M", color: "#ff3366" },
   { url: "/snac", label: "SNAKE", letter: "S", color: "#ffcc00" },
+  { url: "/drop", label: "DROP", letter: "D", color: "#00ccff" },
 ];
 
 function GameLink({ url, label, letter, color, active }: { url: string; label: string; letter: string; color: string; active: boolean }) {

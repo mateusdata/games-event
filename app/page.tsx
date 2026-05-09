@@ -7,6 +7,7 @@ const GAMES = [
   { id: "genius", name: "GENIUS", path: "/genius", color: "#00ff80", letter: "G" },
   { id: "mines", name: "MINES", path: "/mines", color: "#ff3366", letter: "M" },
   { id: "snake", name: "SNAKE", path: "/snac", color: "#ffcc00", letter: "S" },
+  { id: "drop", name: "DROP COIN", path: "/drop", color: "#00ccff", letter: "D" },
 ];
 
 export default function Home() {
