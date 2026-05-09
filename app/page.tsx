@@ -15,7 +15,7 @@ export default function Home() {
   const [hoveredGame, setHoveredGame] = useState<string | null>(null);
 
   return (
-    <div className="flex-1 min-h-screen bg-[#0a0a0f] flex flex-col items-center justify-center font-mono p-5 relative overflow-hidden">
+    <div className="flex-1 min-h-screen bg-[#0a0a0f] flex flex-col items-center justify-start font-mono p-5 pt-16 relative overflow-hidden">
       <div className="fixed inset-0 pointer-events-none z-10 bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(0,0,0,0.08)_2px,rgba(0,0,0,0.08)_4px)]" />
 
       <div 
