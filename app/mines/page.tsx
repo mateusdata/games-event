@@ -2,6 +2,28 @@
 
 import { useEffect, useState, useCallback } from "react";
 
+function playTone(freq: number, type: "sine" | "square" | "sawtooth" | "triangle" = "square", durationMs = 400) {
+  const g = globalThis as any;
+  const AudioContext = g.AudioContext || g.webkitAudioContext;
+  if (!AudioContext) return;
+  
+  const ctx = new AudioContext();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, ctx.currentTime);
+  
+  gain.gain.setValueAtTime(0.1, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + durationMs / 1000);
+  
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  
+  osc.start();
+  osc.stop(ctx.currentTime + durationMs / 1000);
+}
+
 const ROWS = 10;
 const COLS = 10;
 const MINES_COUNT = 15;
@@ -67,8 +89,8 @@ export default function MinesGame() {
   const [best, setBest] = useState<number>(0);
   const [dead, setDead] = useState<boolean>(false);
   const [won, setWon] = useState<boolean>(false);
-  const [started, setStarted] = useState<boolean>(false); // Controla se as bombas já foram geradas
-  const [showIntro, setShowIntro] = useState<boolean>(true); // Controla a tela de introdução
+  const [started, setStarted] = useState<boolean>(false);
+  const [showIntro, setShowIntro] = useState<boolean>(true);
 
   useEffect(() => {
     const stored = (globalThis as any).localStorage?.getItem("mines-best");
@@ -93,11 +115,12 @@ export default function MinesGame() {
   };
 
   const reset = useCallback(() => {
+    playTone(300, "square", 150);
     setScore(0);
     setDead(false);
     setWon(false);
     setStarted(false);
-    setShowIntro(false); // Esconde a introdução ao clicar para começar
+    setShowIntro(false);
     initEmptyBoard();
   }, []);
 
@@ -106,13 +129,13 @@ export default function MinesGame() {
 
     let currentBoard = board;
     
-    // Gera o tabuleiro no primeiro clique real do usuário
     if (!started) {
       currentBoard = generateBoard(r, c);
       setStarted(true);
     }
 
     if (currentBoard[r][c].isMine) {
+      playTone(100, "sawtooth", 800);
       const newBoard = currentBoard.map(row => row.map(cell => ({
         ...cell,
         isRevealed: cell.isMine ? true : cell.isRevealed
@@ -124,6 +147,7 @@ export default function MinesGame() {
 
     const newBoard = currentBoard.map(row => row.map(cell => ({ ...cell })));
     let newScore = score;
+    let revealedCount = 0;
 
     const stack = [[r, c]];
     while (stack.length > 0) {
@@ -133,6 +157,7 @@ export default function MinesGame() {
       if (!cell.isRevealed && !cell.isFlagged) {
         cell.isRevealed = true;
         newScore++;
+        revealedCount++;
 
         if (cell.neighborMines === 0) {
           for (const [dr, dc] of DIRS) {
@@ -145,6 +170,10 @@ export default function MinesGame() {
       }
     }
 
+    if (revealedCount > 0) {
+      playTone(400 + (revealedCount * 10), "sine", 100);
+    }
+
     setBoard(newBoard);
     setScore(newScore);
     updateBestScore(newScore);
@@ -152,6 +181,8 @@ export default function MinesGame() {
     const targetScore = (ROWS * COLS) - MINES_COUNT;
     if (newScore === targetScore) {
       setWon(true);
+      playTone(600, "square", 300);
+      setTimeout(() => playTone(800, "square", 600), 200);
     }
   };
 
@@ -161,7 +192,15 @@ export default function MinesGame() {
 
     const newBoard = [...board];
     newBoard[r] = [...board[r]];
-    newBoard[r][c] = { ...board[r][c], isFlagged: !board[r][c].isFlagged };
+    const newFlagState = !board[r][c].isFlagged;
+    newBoard[r][c] = { ...board[r][c], isFlagged: newFlagState };
+    
+    if (newFlagState) {
+      playTone(800, "triangle", 100);
+    } else {
+      playTone(300, "triangle", 100);
+    }
+    
     setBoard(newBoard);
   };
 

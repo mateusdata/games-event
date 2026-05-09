@@ -2,6 +2,28 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 
+function playTone(freq: number, type: "sine" | "square" | "sawtooth" | "triangle" = "square", durationMs = 400) {
+  const g = globalThis as any;
+  const AudioContext = g.AudioContext || g.webkitAudioContext;
+  if (!AudioContext) return;
+  
+  const ctx = new AudioContext();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, ctx.currentTime);
+  
+  gain.gain.setValueAtTime(0.1, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + durationMs / 1000);
+  
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  
+  osc.start();
+  osc.stop(ctx.currentTime + durationMs / 1000);
+}
+
 type Point = { x: number; y: number };
 
 const GRID = 20;
@@ -48,6 +70,7 @@ export default function SnakeGame() {
   }, [best]);
 
   const reset = useCallback(() => {
+    playTone(300, "square", 150);
     const s: Point[] = [{ x: 10, y: 10 }];
     const d: Point = { x: 1, y: 0 };
     snakeRef.current = s;
@@ -76,6 +99,9 @@ export default function SnakeGame() {
       if (!next) return;
       const cur = dirRef.current;
       if (next.x === -cur.x && next.y === -cur.y) return;
+      
+      playTone(400, "triangle", 50);
+      
       dirRef.current = next;
       setDir(next);
       if (!started && !dead) reset();
@@ -96,6 +122,7 @@ export default function SnakeGame() {
         head.y < 0 || head.y >= GRID ||
         s.some((seg) => seg.x === head.x && seg.y === head.y)
       ) {
+        playTone(100, "sawtooth", 800);
         setDead(true);
         setStarted(false);
         if (intervalRef.current) clearInterval(intervalRef.current);
@@ -105,6 +132,7 @@ export default function SnakeGame() {
         const ate = head.x === f.x && head.y === f.y;
         let newSnake: Point[];
         if (ate) {
+          playTone(600, "square", 150);
           newSnake = [head, ...s];
           setScore((sc) => {
             const ns = sc + 10;
@@ -143,6 +171,7 @@ export default function SnakeGame() {
       next = dy > 0 ? { x: 0, y: 1 } : { x: 0, y: -1 };
     }
     if (next.x !== -cur.x || next.y !== -cur.y) {
+      playTone(400, "triangle", 50);
       dirRef.current = next;
       setDir(next);
     }
@@ -155,13 +184,10 @@ export default function SnakeGame() {
   return (
     <div className="min-h-screen bg-[#0a0a0f] flex flex-col items-center justify-center font-mono px-5 relative overflow-hidden">
 
-      {/* scanline */}
       <div className="fixed inset-0 pointer-events-none z-10 [background-image:repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(0,0,0,0.08)_2px,rgba(0,0,0,0.08)_4px)]" />
 
-      {/* glow */}
       <div className="fixed top-[30%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full pointer-events-none [background:radial-gradient(circle,rgba(0,255,128,0.04)_0%,transparent_70%)]" />
 
-      {/* header */}
       <div className="text-center mb-8">
         <p className="text-[11px] tracking-[6px] text-[#00ff80] mb-2 uppercase opacity-70">
           Games Eventos
@@ -171,7 +197,6 @@ export default function SnakeGame() {
         </h1>
       </div>
 
-      {/* score */}
       <div className="flex gap-8 mb-5 text-xs tracking-[3px] uppercase">
         <div className="text-center">
           <p className="text-[#444] mb-0.5">Score</p>
@@ -184,7 +209,6 @@ export default function SnakeGame() {
         </div>
       </div>
 
-      {/* board */}
       <div
         className="relative cursor-pointer bg-[#0d0d16] border border-[#1a1a2e] [box-shadow:0_0_60px_rgba(0,255,128,0.08),inset_0_0_40px_rgba(0,0,0,0.5)]"
         style={{ width: boardSize, height: boardSize }}
